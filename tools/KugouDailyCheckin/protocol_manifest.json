@@ -1,0 +1,42 @@
+{
+  "manifest_version": 1,
+  "protocol_version": "2026.09.28.4",
+  "min_app_version": "1.1.0",
+  "upstream_repo": "MakcRe/KuGouMusicApi",
+  "upstream_commit": "8f1cb0ea277db4f4ca106035dd41a871b9951e91",
+  "watch_paths": [
+    "module/youth_day_vip.js",
+    "module/youth_day_vip_upgrade.js",
+    "module/youth_month_vip_record.js",
+    "module/youth_listen_song.js",
+    "module/youth_union_vip.js",
+    "module/login.js",
+    "module/login_qr_key.js",
+    "module/login_qr_check.js",
+    "module/login_token.js",
+    "module/register_dev.js",
+    "util/crypto.js",
+    "util/helper.js",
+    "util/request.js",
+    "util/config.json"
+  ],
+  "upstream_file_shas": {
+    "module/login.js": "b4270ba9ef624d8206715a57952b381c409481a3",
+    "module/login_qr_check.js": "c3e32f9068edc4a324d1af4d01603da05e3b9937",
+    "module/login_qr_key.js": "c2e46e77d110320c2a4010f1369f3af9136ada49",
+    "module/login_token.js": "de593aac0c5ca0eadba019747194e97b72c0e75f",
+    "module/register_dev.js": "9b1f3f4c50e7cf3c0ae27acb2c0d972669b57157",
+    "module/youth_day_vip.js": "e84a37db30365fa342a0755d9cf867ae9faf7451",
+    "module/youth_day_vip_upgrade.js": "a06e457035a1d8862566a5aa5695f7e7b4432ccc",
+    "module/youth_listen_song.js": "62f7123565daaf45d664b968665ade1b358b424f",
+    "module/youth_month_vip_record.js": "369841de073bfd553fbeec56bdb6da9bde872c1c",
+    "module/youth_union_vip.js": "eb1a93a24c38074c6b97e2475045d6688794f9c6",
+    "util/config.json": "b72aea1c9fc2c1747e343a74120fd731b959394a",
+    "util/crypto.js": "f51bfb865eb8c8e804b178463e096feabeade5ef",
+    "util/helper.js": "ba68d448530551f3037b1ea97fd45950195eb8c6",
+    "util/request.js": "052dd537406da62e0ab862962c0d41cd458a51d4"
+  },
+  "core_sha256": "725c1fe2e616e4b7ef7e93809467e844b462130e9ff1c8325edab22b29591fc7",
+  "core_url": "https://raw.githubusercontent.com/dingding0131/MoeKoeMusic/kugou-checkin-release/tools/KugouDailyCheckin/protocol_core.py",
+  "notes": "Concept/Lite protocol core; dual daily tasks: ad-report sign-in (/youth/v1/ad/play_report) + day-VIP claim with upgrade; 131001 as already-received; ssa-code/20028 surfaced without bypass; file-level upstream watch."
+}
