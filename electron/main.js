@@ -1,7 +1,6 @@
 import { app, ipcMain, globalShortcut, dialog, Notification, shell, session, powerSaveBlocker, nativeImage, screen } from 'electron';
 import {
-    createWindow, createTray, createTouchBar, startApiServer,
-    stopApiServer, registerShortcut,
+    createWindow, createTray, createTouchBar, registerShortcut,
     playStartupSound, createLyricsWindow, setThumbarButtons,
     registerProtocolHandler, sendHashAfterLoad, getTray, createMvWindow, syncDockIcon
 } from './appServices.js';
@@ -12,15 +11,19 @@ import statusBarLyricsService from './services/statusBarLyricsService.js';
 import customTrayMenuService from './services/customTrayMenuService.js';
 import { setupDesktopShortcutIcon } from './services/desktopShortcutIcon.js';
 import { openLogPath, exportLog } from './services/logHelper.js';
+import { registerKuGouApiHandler } from './services/kugouApiService.js';
 import Store from 'electron-store';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { t } from './language/i18n.js';
+import { getExtensionsFromPermissions } from './extensions/utils.js';
 
 let mainWindow = null;
 let blockerId = null;
 const store = new Store();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const settings = store.get('settings');
 
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
@@ -41,59 +44,47 @@ if (!gotTheLock) {
     });
 }
 
+// 初始化 KuGouAPI 环境变量并注册 IPC 通道
+if(settings?.proxy === 'on') process.env.KUGOU_API_PROXY = settings?.proxyUrl || '';
+process.env.platform = (settings?.dataSource || 'concept') === 'concept'? 'lite': '';
+
+registerKuGouApiHandler();
+
 app.on('ready', () => {
-    startApiServer().then(() => {
-        try {
-            mainWindow = createWindow();
-            createTray(mainWindow);
-            customTrayMenuService.init(() => mainWindow, getTray);
+    try {
+        mainWindow = createWindow();
+        createTray(mainWindow);
+        customTrayMenuService.init(() => mainWindow, getTray);
 
-            // 初始化状态栏歌词服务
-            statusBarLyricsService.init(mainWindow, store, getTray, createTray);
+        // 初始化状态栏歌词服务
+        statusBarLyricsService.init(mainWindow, store, getTray, createTray);
 
-            if (process.platform === "darwin" && store.get('settings')?.touchBar == 'on') createTouchBar(mainWindow);
-            playStartupSound();
-            registerShortcut();
-            setupAutoUpdater(mainWindow);
-            apiService.init(mainWindow);
-            registerProtocolHandler(mainWindow);
-            sendHashAfterLoad(mainWindow);
-            void initializeExtensions();
-            setupDesktopShortcutIcon();
-        } catch (error) {
-            console.log('初始化应用时发生错误:', error);
-            createTray(null);
-            dialog.showMessageBox({
-                type: 'error',
-                title: t('error'),
-                message: t('init-error'),
-                buttons: [t('ok')]
-            }).then(result => {
-                if (result.response === 0) {
-                    app.isQuitting = true;
-                    app.quit();
-                }
-            });
-        }
-    }).catch((error) => {
-        console.log('API 服务启动失败:', error);
+        if (process.platform === "darwin" && settings?.touchBar == 'on') createTouchBar(mainWindow);
+        playStartupSound();
+        registerShortcut();
+        setupAutoUpdater(mainWindow);
+        apiService.init(mainWindow);
+        registerProtocolHandler(mainWindow);
+        sendHashAfterLoad(mainWindow);
+        void initializeExtensions();
+        setupDesktopShortcutIcon();
+    } catch (error) {
+        console.log('初始化应用时发生错误:', error);
         createTray(null);
         dialog.showMessageBox({
             type: 'error',
             title: t('error'),
-            message: t('api-error'),
+            message: t('init-error'),
             buttons: [t('ok')]
         }).then(result => {
             if (result.response === 0) {
                 app.isQuitting = true;
                 app.quit();
             }
-            return;
         });
-    });
+    }
 });
 
-const settings = store.get('settings');
 if (settings?.gpuAcceleration === 'on') {
     app.disableHardwareAcceleration();
     app.commandLine.appendSwitch('enable-transparent-visuals');
@@ -109,8 +100,14 @@ if (settings?.highDpi === 'on') {
     app.commandLine.appendSwitch('force-device-scale-factor', settings?.dpiScale || '1');
 }
 
-if (settings?.apiMode === 'on') {
-    apiService.start();
+if(settings?.apiMode === 'auto') {
+    const apiModeExtensions = getExtensionsFromPermissions('moekoe', 'moekoe:apiMode');
+    if(apiModeExtensions.length >= 1) {
+        console.log(`detected ${apiModeExtensions.length} extension(s) need 'moekoe:apiMode' permission, automatically starting api service...`);
+        apiService.start(settings?.apiModeConfig);
+    }
+} else if (settings?.apiMode === 'on') {
+    apiService.start(settings?.apiModeConfig);
 }
 
 // 即将退出
@@ -127,8 +124,6 @@ app.on('before-quit', () => {
     setImmediate(() => {
         statusBarLyricsService.cleanup();
         customTrayMenuService.cleanup();
-
-        stopApiServer();
         apiService.stop();
         cleanupExtensions();
         app.exit(0);
@@ -168,7 +163,7 @@ ipcMain.on('disclaimer-response', (event, accepted) => {
 ipcMain.on('window-control', (event, action) => {
     switch (action) {
         case 'close':
-            if (store.get('settings')?.minimizeToTray === 'off') {
+            if (settings?.minimizeToTray === 'off') {
                 app.isQuitting = true;
                 app.quit();
             } else {
@@ -263,7 +258,7 @@ ipcMain.on('desktop-lyrics-action', (event, action) => {
 });
 
 const syncDesktopLyricsSetting = (value) => {
-    const settings = store.get('settings') || {};
+    const settings = settings || {};
     store.set('settings', {
         ...settings,
         desktopLyrics: value
